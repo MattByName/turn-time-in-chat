@@ -10,6 +10,8 @@
   "scripts": {
     "build:ts": "tsc",
     "build:copy": "copyfiles -u 1 \"src/templates/**/*.html\" build/",
-    "build": "npm-run-all build:ts build:copy"
-}
+    "build": "npm-run-all build:ts build:copy",
+    "prepare-release": "node scripts/prepare-release.mjs",
+    "package": "npm run build && npm run prepare-release"
+  }
 }
