@@ -352,22 +352,22 @@ Hooks.on('renderCombatTracker', (app: Application, html: JQuery | HTMLElement | 
   // Prevent duplicate insertion on re-render
   if (root.querySelector('.turn-time-combat-button')) return;
 
-  const insertionTarget = root.querySelector('.encounter-title, .combat-tracker-header, .combat-controls, .directory-header, header') as HTMLElement | null;
-  const insertionParent = insertionTarget?.parentElement || root.querySelector('.window-content') as HTMLElement | null || root;
+  const encountersNav = root.querySelector('nav.encounters') as HTMLElement | null;
+  const trackerSettingsButton = encountersNav?.querySelector('[data-action="trackerSettings"]') as HTMLElement | null;
 
-  const button = document.createElement('a');
-  button.className = 'combat-button combat-control turn-time-combat-button';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'inline-control icon fa-solid fa-clock turn-time-combat-button';
   button.setAttribute('aria-label', 'Encounter Timer');
-  button.setAttribute('role', 'button');
   button.setAttribute('data-tooltip', 'Encounter Timer');
-  button.innerHTML = '<i class="fas fa-clock"></i>';
 
-  if (insertionTarget?.parentElement) {
-    insertionParent.insertBefore(button, insertionTarget);
-    insertionTarget.style.marginRight = 'var(--control-width)';
+  if (encountersNav) {
+    encountersNav.insertBefore(button, trackerSettingsButton);
   } else {
+    const fallbackTarget = root.querySelector('.encounter-title, .combat-tracker-header, .combat-controls, .directory-header, header') as HTMLElement | null;
+    const fallbackParent = fallbackTarget?.parentElement || root.querySelector('.window-content') as HTMLElement | null || root;
     button.style.margin = '4px';
-    insertionParent.prepend(button);
+    fallbackParent.prepend(button);
   }
 
   button.addEventListener('click', (ev) => {
