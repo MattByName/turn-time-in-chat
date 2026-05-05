@@ -26,10 +26,46 @@ type SettingConfig = {
   config: true;
   type: BooleanConstructor | NumberConstructor;
   default: boolean | number;
+  onChange?: (value: boolean | number) => void;
 };
 
 function registerSetting(key: string, config: SettingConfig) {
   (game.settings as any).register(MODULE_ID as any, key as any, config as any);
+}
+
+let encounterTimerApp: CombatTimerApp | null = null;
+
+function getActiveCombat(combatId?: string | null) {
+  return (combatId ? game.combats?.get(combatId) : null) as Combat | null || game.combat;
+}
+
+function openEncounterTimer(combatId?: string | null) {
+  const combat = getActiveCombat(combatId);
+  if (!combat?.started) return;
+
+  encounterTimerApp ??= new CombatTimerApp({combatId: combat.id});
+  encounterTimerApp.render(true);
+}
+
+function closeEncounterTimer() {
+  encounterTimerApp?.close();
+  encounterTimerApp = null;
+}
+
+function autoShowEncounterTimer(combatId?: string | null) {
+  if (getSetting('autoShowEncounterTimer')) {
+    openEncounterTimer(combatId);
+  }
+}
+
+function getRenderRoot(html: JQuery | HTMLElement | HTMLElement[] | undefined, app?: Application) {
+  if (html instanceof HTMLElement) return html;
+  if (Array.isArray(html)) return html[0];
+
+  const appElement = (app as any)?.element;
+  if (appElement instanceof HTMLElement) return appElement;
+
+  return html?.[0] as HTMLElement | undefined || appElement?.[0] as HTMLElement | undefined;
 }
 
 Hooks.once('init', () => {
@@ -81,6 +117,16 @@ Hooks.once('init', () => {
     config: true,
     type: Boolean,
     default: true,
+  });
+
+  registerSetting("autoShowEncounterTimer", {
+    name: "Automatically Show Encounter Timer Window",
+    hint: "When enabled, the encounter timer window opens automatically for each user when an encounter is active.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false,
+    onChange: () => autoShowEncounterTimer(),
   });
 
   registerSetting("hideNonPlayerTurns", {
@@ -231,6 +277,8 @@ Hooks.once('ready', () => {
       sendChatMessage(JSON.parse(data.message))
     }
   })
+
+  autoShowEncounterTimer();
 });
 
 // When combat starts, begin tracking
@@ -264,6 +312,8 @@ Hooks.on('combatStart', (combat: Combat) => {
           type: CONST.CHAT_MESSAGE_STYLES.OTHER,
       }, isPrivate: true})
   }
+
+  autoShowEncounterTimer(combat.id);
 });
 
 // When a combat turn changes, post time elapsed
@@ -279,29 +329,31 @@ Hooks.on('combatRound', (combat: Combat, _updateData: CombatRoundUpdateData, _up
 
 // When combat ends, post total time and clean up
 Hooks.on('deleteCombat', (combat: Combat) => {
+  closeEncounterTimer();
+
   if (!game.users?.activeGM?.isSelf) return;
   postTurnMessage(combat)
   postCombatRoundMessage(combat)
   postEndCombatMessage(combat)
 });
 
-Hooks.on('renderCombatTracker', (_app: Application, html: JQuery, data: any) => {
+Hooks.on('renderCombatTracker', (app: Application, html: JQuery | HTMLElement | HTMLElement[], data: any) => {
   // Only show button if there's an active combat
-  if (!game.combat?.started) return;
+  const combat = getActiveCombat(data?.combat?.id ?? (app as any).viewed?.id);
+  if (!combat?.started) return;
 
   // don't show to players if it's disabled
   const timerEnabled = getSetting('playersSeeTimerButton');
   if (!timerEnabled && !game.user?.isGM) return;
 
-  const root = html[0] as HTMLElement | undefined;
+  const root = getRenderRoot(html, app);
   if (!root) return;
 
   // Prevent duplicate insertion on re-render
   if (root.querySelector('.turn-time-combat-button')) return;
 
-  // Find the encounter title to insert before it
-  const encounterTitle = root.querySelector('.encounter-title') as HTMLElement | null;
-  if (!encounterTitle || !encounterTitle.parentElement) return;
+  const insertionTarget = root.querySelector('.encounter-title, .combat-tracker-header, .combat-controls, .directory-header, header') as HTMLElement | null;
+  const insertionParent = insertionTarget?.parentElement || root.querySelector('.window-content') as HTMLElement | null || root;
 
   const button = document.createElement('a');
   button.className = 'combat-button combat-control turn-time-combat-button';
@@ -310,12 +362,17 @@ Hooks.on('renderCombatTracker', (_app: Application, html: JQuery, data: any) => 
   button.setAttribute('data-tooltip', 'Encounter Timer');
   button.innerHTML = '<i class="fas fa-clock"></i>';
 
-  encounterTitle.parentElement.insertBefore(button, encounterTitle);
-  encounterTitle.style.marginRight = 'var(--control-width)';
+  if (insertionTarget?.parentElement) {
+    insertionParent.insertBefore(button, insertionTarget);
+    insertionTarget.style.marginRight = 'var(--control-width)';
+  } else {
+    button.style.margin = '4px';
+    insertionParent.prepend(button);
+  }
 
   button.addEventListener('click', (ev) => {
     ev.preventDefault();
-    new CombatTimerApp({combatId: data?.combat?.id}).render(true);
+    openEncounterTimer(combat.id);
   });
 });
 
@@ -375,4 +432,3 @@ Hooks.on("renderChatMessage", (_app: Application, html: JQuery, _data: any) => {
     }
   }
 });
-  

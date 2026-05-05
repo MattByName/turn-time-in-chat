@@ -22,6 +22,7 @@ Minimum turn length to post (Defaults to 5 seconds)
 Post things in chat (Defaults to true)  
 Make all messages GM only (Defaults to false)  
 Let players see the encounter timer button that logs times (Defaults to true)  
+Automatically show encounter timer window (Defaults to false)<br>
 Hiding non-player turn lengths (Defaults to false)  
 Hiding non-player names (Defaults to false)  
 Ignore dead creatures (Defaults to true)  

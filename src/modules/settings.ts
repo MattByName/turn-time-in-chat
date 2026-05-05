@@ -6,6 +6,7 @@ type SettingKey =
   | 'postInChat'
   | 'messagesGMOnly'
   | 'playersSeeTimerButton'
+  | 'autoShowEncounterTimer'
   | 'hideNonPlayerTurns'
   | 'hideNonPlayerNames'
   | 'trackDeadCreatures'
@@ -20,6 +21,7 @@ type SettingValueMap = {
   postInChat: boolean;
   messagesGMOnly: boolean;
   playersSeeTimerButton: boolean;
+  autoShowEncounterTimer: boolean;
   hideNonPlayerTurns: boolean;
   hideNonPlayerNames: boolean;
   trackDeadCreatures: boolean;
