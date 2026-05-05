@@ -1,3 +1,5 @@
+import { getSetting } from "./settings.ts";
+
 // Helper function to format milliseconds into a readable time string
 export function formatTime(ms: number): string {
   // Time constants in milliseconds
@@ -138,7 +140,9 @@ export function updateCombatFlag(combat: Combat, flag: string, update: unknown) 
   if (game.user?.isGM) {
     //this does leave me open to a minor race condition, but whatever
     //this can error out if the combat is over (this is async)
-    combat.setFlag("turn-time-in-chat", flag as any, update).catch(undefined => {})
+    combat.setFlag("turn-time-in-chat", flag as any, update).catch((error) => {
+      console.warn('turn-time-in-chat | Failed to set combat flag', { combatId: combat.id, flag, error });
+    })
   } else {
     game.socket?.emit('module.turn-time-in-chat', {
       action: 'updateCombatFlag',
@@ -154,7 +158,7 @@ export function sendChatMessage(chatMessage: {options?: Object, message: string,
   if (chatMessage.compact)
     div = "turn-time-message-compact"
 
-  const privatMessageConfig = (game.settings as any).get('turn-time-in-chat' as any, "messagesGMOnly" as any) as boolean;
+  const privatMessageConfig = getSetting('messagesGMOnly');
   if (privatMessageConfig === true) {
     chatMessage.isPrivate = true
   }
