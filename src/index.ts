@@ -285,7 +285,7 @@ Hooks.on('deleteCombat', (combat: Combat) => {
   postEndCombatMessage(combat)
 });
 
-Hooks.on('renderCombatTracker', (_app: Application, html: JQuery, data: any) => {
+Hooks.on('renderCombatTracker', (_app: Application, html: JQuery | HTMLElement, data: any) => {
   // Only show button if there's an active combat
   if (!game.combat?.started) return;
 
@@ -293,7 +293,7 @@ Hooks.on('renderCombatTracker', (_app: Application, html: JQuery, data: any) => 
   const timerEnabled = getSetting('playersSeeTimerButton');
   if (!timerEnabled && !game.user?.isGM) return;
 
-  const root = html[0] as HTMLElement | undefined;
+  const root = html instanceof HTMLElement ? html : (html[0] as HTMLElement | undefined);
   if (!root) return;
 
   // Prevent duplicate insertion on re-render
@@ -326,8 +326,8 @@ Hooks.on('renderCombatTracker', (_app: Application, html: JQuery, data: any) => 
 // Open source is the best!
 
 // Apply custom CSS to chat messages
-Hooks.on("renderChatMessage", (_app: Application, html: JQuery, _data: any) => {
-  const root = html[0] as HTMLElement | undefined;
+Hooks.on('renderChatMessageHTML', (_message: ChatMessage, html: HTMLElement, _data: any) => {
+  const root = html;
   if (!root) return;
 
   const message = root.querySelector('.turn-time-message-compact') as HTMLElement | null;
