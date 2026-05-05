@@ -1,3 +1,6 @@
+This is a personal fork of the module to get it running on v13. I've used ChatGPT codex heavily and can't vouch that the code is sensible and fine. Use at your own risk.
+
+---
 A foundry module that displays the length of turns in chat! To help you encourage your players to take their turn faster, or to figure out why a 4 round combat lasts 5 hours.
 
 https://github.com/user-attachments/assets/d0927631-b101-4587-87bd-22912c0c033d
