@@ -1,9 +1,10 @@
 import { formatTime, formatTimeCompact, sendChatMessage, updateCombatFlag } from "./util.ts";
+import { getSetting } from "./settings.ts";
 
 export function postTurnMessage(combat: Combat) {
   let skipPost = false
   const disabled = combat.getFlag("turn-time-in-chat", 'timerDisabled');
-  const disabledSetting = (game.settings as any).get('turn-time-in-chat' as any, "postTurnLength" as any) as boolean;
+  const disabledSetting = getSetting('postTurnLength');
   if (disabled === true || disabledSetting === false) {
     skipPost = true
   }
@@ -15,7 +16,7 @@ export function postTurnMessage(combat: Combat) {
   const turnDuration = now - lastTurn;
 
   // Get minimum turn length setting in seconds
-  const minimumTurnLength = (game.settings as any).get('turn-time-in-chat' as any, "minimumTurnLength" as any) as number;
+  const minimumTurnLength = getSetting('minimumTurnLength');
   // Convert turnDuration from ms to seconds for comparison
   const turnDurationSecs = turnDuration / 1000;
   
@@ -26,7 +27,7 @@ export function postTurnMessage(combat: Combat) {
   const combatant = combat.combatant;
   if (!combatant) return;
   if (combatant.isDefeated) {
-    const trackDeadCreatures = (game.settings as any).get('turn-time-in-chat' as any, "trackDeadCreatures" as any) as boolean;
+    const trackDeadCreatures = getSetting('trackDeadCreatures');
     if (!trackDeadCreatures) {
         return
     }
@@ -34,7 +35,7 @@ export function postTurnMessage(combat: Combat) {
 
   let skipRegularPost = skipPost
 
-  const compactMessages = (game.settings as any).get('turn-time-in-chat' as any, "compactMessages" as any) as boolean;
+  const compactMessages = getSetting('compactMessages');
 
   // Skip if turn duration is less than minimum
   if (minimumTurnLength > turnDurationSecs) {
@@ -42,8 +43,8 @@ export function postTurnMessage(combat: Combat) {
   }
   
   else if (combatant.isNPC) {
-    const hideNonPlayerTurns = (game.settings as any).get('turn-time-in-chat' as any, "hideNonPlayerTurns" as any) as boolean;
-    const hideNonPlayerNames = (game.settings as any).get('turn-time-in-chat' as any, "hideNonPlayerNames" as any) as boolean;
+    const hideNonPlayerTurns = getSetting('hideNonPlayerTurns');
+    const hideNonPlayerNames = getSetting('hideNonPlayerNames');
     if (hideNonPlayerTurns) {
       skipRegularPost = true
     }
@@ -96,7 +97,7 @@ export function postTurnMessage(combat: Combat) {
 
 export function postCombatRoundMessage(combat: Combat) {
   const disabled = combat.getFlag("turn-time-in-chat", 'timerDisabled');
-  const disabledSetting = (game.settings as any).get('turn-time-in-chat' as any, "postRoundLength" as any) as boolean;
+  const disabledSetting = getSetting('postRoundLength');
   let skipPost = false
   if (disabled === true || disabledSetting === false) {
     skipPost = true
@@ -109,14 +110,14 @@ export function postCombatRoundMessage(combat: Combat) {
   const now = Date.now();
   const roundDuration = now - roundStart;
   // Get minimum turn length setting in seconds
-  const minimumTurnLength = (game.settings as any).get('turn-time-in-chat' as any, "minimumTurnLength" as any) as number;
+  const minimumTurnLength = getSetting('minimumTurnLength');
   // Convert roundDuration from ms to seconds for comparison
   const turnDurationSecs = roundDuration / 1000;
   // Skip if round duration is less than minimum
   if (minimumTurnLength > turnDurationSecs) return;
   
   const formattedRoundTime = formatTime(roundDuration);
-  const compactMessages = (game.settings as any).get('turn-time-in-chat' as any, "compactMessages" as any) as boolean;
+  const compactMessages = getSetting('compactMessages');
   
   if (!skipPost) {
     // Post round time info to chat
@@ -139,7 +140,7 @@ export function postCombatRoundMessage(combat: Combat) {
 
 export function postEndCombatMessage(combat: Combat) {
   const disabled = combat.getFlag("turn-time-in-chat", 'timerDisabled');
-  const disabledSetting = (game.settings as any).get('turn-time-in-chat' as any, "postCombatLength" as any) as boolean;
+  const disabledSetting = getSetting('postCombatLength');
   if (disabled === true || disabledSetting === false) {
     return
   }
@@ -149,17 +150,17 @@ export function postEndCombatMessage(combat: Combat) {
   
   const totalTime = Date.now() - combatStart;
   // Get minimum turn length setting in seconds
-  const minimumTurnLength = (game.settings as any).get('turn-time-in-chat' as any, "minimumTurnLength" as any) as number;
+  const minimumTurnLength = getSetting('minimumTurnLength');
   // Convert totalTime from ms to seconds for comparison
   const turnDurationSecs = totalTime / 1000;
   // Skip if round duration is less than minimum
   if (minimumTurnLength > turnDurationSecs) return;
   
   const formattedTotalTime = formatTime(totalTime);
-  const compactMessages = (game.settings as any).get('turn-time-in-chat' as any, "compactMessages" as any) as boolean;
+  const compactMessages = getSetting('compactMessages');
 
 
-  const postCharacterTurns = (game.settings as any).get('turn-time-in-chat' as any, "postTotalTurns" as any) as boolean;
+  const postCharacterTurns = getSetting('postTotalTurns');
 
   if (!postCharacterTurns) {
     if (compactMessages) {

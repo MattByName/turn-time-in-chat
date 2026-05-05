@@ -3,14 +3,33 @@
 import { postTurnMessage, postCombatRoundMessage, postEndCombatMessage } from "./modules/combatMessages.ts";
 import { CombatTimerApp } from "./modules/combatTimerApp.ts";
 import { sendChatMessage, updateCombatFlag } from "./modules/util.ts";
+import { getSetting, MODULE_ID } from "./modules/settings.ts";
 
-// Define module ID constant
-const MODULE_ID = 'turn-time-in-chat';
 
-// Store timing information
-interface TurnTimeData {
-  roundStartTime: number;
-  lastTurnTime: number;
+interface CombatTurnUpdateData {
+  turn?: number;
+}
+
+interface CombatRoundUpdateData {
+  round?: number;
+}
+
+interface CombatUpdateOptions {
+  direction?: 1 | -1;
+  advanceTime?: number;
+}
+
+type SettingConfig = {
+  name: string;
+  hint: string;
+  scope: 'world';
+  config: true;
+  type: BooleanConstructor | NumberConstructor;
+  default: boolean | number;
+};
+
+function registerSetting(key: string, config: SettingConfig) {
+  (game.settings as any).register(MODULE_ID as any, key as any, config as any);
 }
 
 Hooks.once('init', () => {
@@ -19,106 +38,106 @@ Hooks.once('init', () => {
 
   // Register module settings
 
-  game.settings.register(MODULE_ID as any, "compactMessages" as any, {
+  registerSetting("compactMessages", {
     name: "Compact Messages",
     hint: "When enabled, the messages in chat are made far more compact.",
     scope: "world",
     config: true,
     type: Boolean,
     default: true,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "minimumTurnLength" as any, {
+  registerSetting("minimumTurnLength", {
       name: "Minimum Time To Track (seconds)",
       hint: "Doesn't track turns shorter than this. Set to 0 to track all turns.",
       scope: "world",
       config: true,
       type: Number,
       default: 5,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "postInChat" as any, {
+  registerSetting("postInChat", {
     name: "Post Messages In Chat",
     hint: "When enabled, posts messages in chat. If disabled, you can still enable it per-encounter.",
     scope: "world",
     config: true,
     type: Boolean,
     default: true,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "messagesGMOnly" as any, {
+  registerSetting("messagesGMOnly", {
     name: "Make all messages GM only",
     hint: "When enabled, all messages will be sent to the DM alone, and players won't be able to see any chat messages.",
     scope: "world",
     config: true,
     type: Boolean,
     default: false,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "playersSeeTimerButton" as any, {
+  registerSetting("playersSeeTimerButton", {
     name: "Let players see the Encounter Timer Button",
     hint: "When disabled, players can't see the encounter timer button (in the encounter tab, to the left of the rounds display, when an encounter is active).",
     scope: "world",
     config: true,
     type: Boolean,
     default: true,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "hideNonPlayerTurns" as any, {
+  registerSetting("hideNonPlayerTurns", {
       name: "Hide Non-Player Turn Lengths",
       hint: "When enabled, doesn't post turn lengths for non-player characters.",
       scope: "world",
       config: true,
       type: Boolean,
       default: false
-  } as any);
+  });
   
-  game.settings.register(MODULE_ID as any, "hideNonPlayerNames" as any, {
+  registerSetting("hideNonPlayerNames", {
       name: "Hide Non-Player Names",
       hint: "When enabled, doesn't post the names of non-player characters.",
       scope: "world",
       config: true,
       type: Boolean,
       default: false
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "trackDeadCreatures" as any, {
+  registerSetting("trackDeadCreatures", {
       name: "Track Dead Creatures",
       hint: "When enabled, dead creature turns are tracked.",
       scope: "world",
       config: true,
       type: Boolean,
       default: false,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "postTurnLength" as any, {
+  registerSetting("postTurnLength", {
       name: "Post Turn Length",
       hint: "When enabled, posts the length of turns.",
       scope: "world",
       config: true,
       type: Boolean,
       default: true,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "postRoundLength" as any, {
+  registerSetting("postRoundLength", {
       name: "Post Round Length",
       hint: "When enabled, posts the length of rounds.",
       scope: "world",
       config: true,
       type: Boolean,
       default: true,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "postCombatLength" as any, {
+  registerSetting("postCombatLength", {
       name: "Post Encounter Length",
       hint: "When enabled, posts the length of encounters.",
       scope: "world",
       config: true,
       type: Boolean,
       default: true,
-  } as any);
+  });
 
-  game.settings.register(MODULE_ID as any, "postTotalTurns" as any, {
+  registerSetting("postTotalTurns", {
     name: "Post Total Character Turns",
     hint: "When enabled, posts the total length of character's turns throughout the entire encounter at the end of encounter.",
     scope: "world",
@@ -201,8 +220,10 @@ Hooks.once('ready', () => {
       const combat = game.combats?.get(data.combatId);
       if (combat) {
         try {
-        await (combat as any).setFlag(MODULE_ID, data.flag, data.value);
-        } catch {}
+          await (combat as any).setFlag(MODULE_ID, data.flag, data.value);
+        } catch (error) {
+          console.warn('turn-time-in-chat | Socket flag update failed', { combatId: data.combatId, flag: data.flag, error });
+        }
       }
     } 
     
@@ -216,7 +237,7 @@ Hooks.once('ready', () => {
 Hooks.on('combatStart', (combat: Combat) => {
   const now = Date.now();
   
-  const chatEnabled = (game.settings as any).get(MODULE_ID as any, "postInChat" as any) as boolean;
+  const chatEnabled = getSetting('postInChat');
   updateCombatFlag(combat as Combat, 'roundStartTime', now);
   updateCombatFlag(combat as Combat, 'lastTurnTime', now);
   updateCombatFlag(combat as Combat, 'combatStartTime', now);
@@ -246,12 +267,12 @@ Hooks.on('combatStart', (combat: Combat) => {
 });
 
 // When a combat turn changes, post time elapsed
-Hooks.on('combatTurn', (combat: Combat, updateData: any, updateOptions: any) => {
+Hooks.on('combatTurn', (combat: Combat, _updateData: CombatTurnUpdateData, _updateOptions: CombatUpdateOptions) => {
   postTurnMessage(combat)
 });
 
 // When a combat round changes, post round time
-Hooks.on('combatRound', (combat: Combat, updateData: any, updateOptions: any) => {
+Hooks.on('combatRound', (combat: Combat, _updateData: CombatRoundUpdateData, _updateOptions: CombatUpdateOptions) => {
   postTurnMessage(combat)
   postCombatRoundMessage(combat)
 });
@@ -264,28 +285,35 @@ Hooks.on('deleteCombat', (combat: Combat) => {
   postEndCombatMessage(combat)
 });
 
-Hooks.on('renderCombatTracker', (app: Application, html: JQuery, data: any) => {
+Hooks.on('renderCombatTracker', (_app: Application, html: JQuery, data: any) => {
   // Only show button if there's an active combat
   if (!game.combat?.started) return;
 
   // don't show to players if it's disabled
-  const timerEnabled = (game.settings as any).get(MODULE_ID as any, "playersSeeTimerButton" as any) as boolean;
+  const timerEnabled = getSetting('playersSeeTimerButton');
   if (!timerEnabled && !game.user?.isGM) return;
-  
-  // Create the button to match other combat controls
-  const button = $(`<a class="combat-button combat-control" aria-label="Encounter Timer" role="button" data-tooltip="Encounter Timer">
-    <i class="fas fa-clock"></i>
-  </a>`);
-  
+
+  const root = html[0] as HTMLElement | undefined;
+  if (!root) return;
+
+  // Prevent duplicate insertion on re-render
+  if (root.querySelector('.turn-time-combat-button')) return;
+
   // Find the encounter title to insert before it
-  const encounterTitle = html.find('.encounter-title');
-  encounterTitle.before(button);
-  
-  // Fix the centering of the encounter title by adding margin-right
-  encounterTitle.css('margin-right', 'var(--control-width)');
-  
-  // Add click handler
-  button.on('click', ev => {
+  const encounterTitle = root.querySelector('.encounter-title') as HTMLElement | null;
+  if (!encounterTitle || !encounterTitle.parentElement) return;
+
+  const button = document.createElement('a');
+  button.className = 'combat-button combat-control turn-time-combat-button';
+  button.setAttribute('aria-label', 'Encounter Timer');
+  button.setAttribute('role', 'button');
+  button.setAttribute('data-tooltip', 'Encounter Timer');
+  button.innerHTML = '<i class="fas fa-clock"></i>';
+
+  encounterTitle.parentElement.insertBefore(button, encounterTitle);
+  encounterTitle.style.marginRight = 'var(--control-width)';
+
+  button.addEventListener('click', (ev) => {
     ev.preventDefault();
     new CombatTimerApp({combatId: data?.combat?.id}).render(true);
   });
@@ -298,44 +326,53 @@ Hooks.on('renderCombatTracker', (app: Application, html: JQuery, data: any) => {
 // Open source is the best!
 
 // Apply custom CSS to chat messages
-Hooks.on("renderChatMessage", (app: Application, html: JQuery, data: any) => {
-  const message = html.find(`.turn-time-message-compact`);
-  if (!message.length) return;
+Hooks.on("renderChatMessage", (_app: Application, html: JQuery, _data: any) => {
+  const root = html[0] as HTMLElement | undefined;
+  if (!root) return;
 
-  html.css("text-align", "center");
-  html.css("margin", "2px");
-  html.css("padding", "2px");
-  html.find(".message-sender").text("");
-  html.find(".message-metadata")[0].style.display = "none";
-  html.find(".whisper-to")[0].style.display = "none";
-  
-  // add trash icon
-  // this was super annoying to do properly btw, i should learn frontend at some point
+  const message = root.querySelector('.turn-time-message-compact') as HTMLElement | null;
+  if (!message) return;
+
+  root.style.textAlign = 'center';
+  root.style.margin = '2px';
+  root.style.padding = '2px';
+
+  const sender = root.querySelector('.message-sender');
+  if (sender) sender.textContent = '';
+
+  const metadata = root.querySelector('.message-metadata') as HTMLElement | null;
+  if (metadata) metadata.style.display = 'none';
+
+  const whisperTo = root.querySelector('.whisper-to') as HTMLElement | null;
+  if (whisperTo) whisperTo.style.display = 'none';
+
   if (game.user?.isGM) {
-    const messageDiv = html.find(`div.turn-time-message-compact`);
-    messageDiv.css("position", "relative");
-    
+    message.style.position = 'relative';
+
     // First wrap the content in a div that keeps centering
-    const content = messageDiv.html();
-    messageDiv.html(`<div class="centered-content">${content}</div>`);
-    
+    const content = message.innerHTML;
+    message.innerHTML = `<div class="centered-content">${content}</div>`;
+
     // Add the trash icon
-    messageDiv.append(`<span><a class="button message-header message-delete"><i class="fas fa-trash"></i></a></span>`);
-    
-    // Position the trash icon
-    html.find(`a.message-delete`).closest(`span`).css({
-        "position": "absolute",
-        "right": "4px",
-        "top": "0px",
-        "font-size": "var(--font-size-12)"
-    });
-    
-    // Apply styles to prevent overlap without affecting centering
-    messageDiv.find(".centered-content").css({
-        "display": "inline-block",
-        "max-width": "calc(100% - 20px)",
-        "text-align": "center"
-    });
+    const wrapper = document.createElement('span');
+    wrapper.style.position = 'absolute';
+    wrapper.style.right = '4px';
+    wrapper.style.top = '0px';
+    wrapper.style.fontSize = 'var(--font-size-12)';
+
+    const anchor = document.createElement('a');
+    anchor.className = 'button message-header message-delete';
+    anchor.innerHTML = '<i class="fas fa-trash"></i>';
+
+    wrapper.appendChild(anchor);
+    message.appendChild(wrapper);
+
+    const centered = message.querySelector('.centered-content') as HTMLElement | null;
+    if (centered) {
+      centered.style.display = 'inline-block';
+      centered.style.maxWidth = 'calc(100% - 20px)';
+      centered.style.textAlign = 'center';
+    }
   }
 });
   
