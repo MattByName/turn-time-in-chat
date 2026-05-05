@@ -34,7 +34,7 @@ manifest.version = releaseVersion;
 
 if (repository) {
   manifest.url = `https://github.com/${repository}`;
-  manifest.manifest = `https://github.com/${repository}/releases/download/${tagName}/module.json`;
+  manifest.manifest = `https://github.com/${repository}/releases/latest/download/module.json`;
   manifest.download = `https://github.com/${repository}/releases/download/${tagName}/module.zip`;
 }
 
