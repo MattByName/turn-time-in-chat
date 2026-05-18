@@ -1,15 +1,79 @@
 <div class="combat-timer-container">
+    <style>
+      .combat-timer-container {
+        display: grid;
+        gap: 12px;
+      }
+
+      .combat-timer-container h2 {
+        margin: 0;
+      }
+
+      .turn-focus {
+        display: grid;
+        gap: 4px;
+        padding: 14px;
+        border: 1px solid var(--color-border-highlight, #9f8475);
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--color-bg-option, #f4efe6) 80%, var(--color-shadow-primary, #000) 20%);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+        text-align: center;
+      }
+
+      .turn-focus__label,
+      .turn-focus__caption {
+        color: var(--color-text-light-6, #6b625b);
+        font-size: var(--font-size-12, 12px);
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .turn-focus__name {
+        overflow-wrap: anywhere;
+        font-size: var(--font-size-16, 16px);
+        font-weight: 700;
+      }
+
+      .turn-focus__time {
+        color: var(--color-text-dark-primary, #191813);
+        font-family: var(--font-primary, serif);
+        font-size: 34px;
+        font-weight: 800;
+        line-height: 1.05;
+        overflow-wrap: anywhere;
+      }
+
+      .timer-stats {
+        display: grid;
+        gap: 8px;
+      }
+
+      .timer-stat {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .timer-stat label {
+        margin: 0;
+        color: var(--color-text-light-6, #6b625b);
+        font-weight: 600;
+      }
+
+      .timer-stat span {
+        text-align: right;
+      }
+    </style>
     {{#if hasActiveCombat}}
       <h2>Encounter Status</h2>
+      <section class="turn-focus" aria-live="polite">
+        <div class="turn-focus__label">Current Turn</div>
+        <div class="turn-focus__name">{{currentCombatant.name}}</div>
+        <div class="turn-focus__time">{{turnElapsed}}</div>
+        <div class="turn-focus__caption">Elapsed This Turn</div>
+      </section>
       <div class="timer-stats">
-        <div class="timer-stat">
-          <label>Current Turn:</label>
-          <span>{{currentCombatant.name}}</span>
-        </div>
-        <div class="timer-stat">
-          <label>Turn Duration:</label>
-          <span>{{turnElapsed}}</span>
-        </div>
         <div class="timer-stat">
           <label>Round Duration:</label>
           <span>{{roundElapsed}}</span>
