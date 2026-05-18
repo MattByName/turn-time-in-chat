@@ -68,6 +68,70 @@ function getRenderRoot(html: JQuery | HTMLElement | HTMLElement[] | undefined, a
   return html?.[0] as HTMLElement | undefined || appElement?.[0] as HTMLElement | undefined;
 }
 
+function toggleCombatTimerMessages(combatId: string | undefined, disabled: boolean, button: HTMLButtonElement) {
+  if (!combatId || !game.combats) {
+    ui.notifications?.error("Failed to find the combat");
+    return;
+  }
+
+  const combat = game.combats.get(combatId);
+  if (!combat) {
+    ui.notifications?.error("Failed to find the combat");
+    return;
+  }
+
+  updateCombatFlag(combat as Combat, 'timerDisabled', disabled);
+  ui.notifications?.info(disabled ? "Timer Messages Disabled" : "Timer Messages Enabled");
+  button.disabled = true;
+  button.textContent = disabled ? 'Timer Messages Disabled' : 'Timer Messages Enabled';
+}
+
+function styleCompactChatMessage(root: HTMLElement) {
+  const message = root.querySelector('.turn-time-message-compact') as HTMLElement | null;
+  if (!message || message.dataset.tticStyled === 'true') return;
+  message.dataset.tticStyled = 'true';
+
+  root.style.textAlign = 'center';
+  root.style.margin = '2px';
+  root.style.padding = '2px';
+
+  const sender = root.querySelector('.message-sender');
+  if (sender) sender.textContent = '';
+
+  const metadata = root.querySelector('.message-metadata') as HTMLElement | null;
+  if (metadata) metadata.style.display = 'none';
+
+  const whisperTo = root.querySelector('.whisper-to') as HTMLElement | null;
+  if (whisperTo) whisperTo.style.display = 'none';
+
+  if (game.user?.isGM) {
+    message.style.position = 'relative';
+
+    const content = message.innerHTML;
+    message.innerHTML = `<div class="centered-content">${content}</div>`;
+
+    const wrapper = document.createElement('span');
+    wrapper.style.position = 'absolute';
+    wrapper.style.right = '4px';
+    wrapper.style.top = '0px';
+    wrapper.style.fontSize = 'var(--font-size-12)';
+
+    const anchor = document.createElement('a');
+    anchor.className = 'button message-header message-delete';
+    anchor.innerHTML = '<i class="fas fa-trash"></i>';
+
+    wrapper.appendChild(anchor);
+    message.appendChild(wrapper);
+
+    const centered = message.querySelector('.centered-content') as HTMLElement | null;
+    if (centered) {
+      centered.style.display = 'inline-block';
+      centered.style.maxWidth = 'calc(100% - 20px)';
+      centered.style.textAlign = 'center';
+    }
+  }
+}
+
 Hooks.once('init', () => {
   console.log(`${MODULE_ID} | Initializing Turn Time In Chat`);
   if (!game.settings) return;
@@ -191,44 +255,17 @@ Hooks.once('init', () => {
     type: Boolean,
     default: true,
 } as any);
+  document.addEventListener('click', (event) => {
+    const target = event.target as Element | null;
+    const button = target?.closest('.disable-combat-timer, .enable-combat-timer') as HTMLButtonElement | null;
+    if (!button) return;
 
-
-  $(document).on('click', '.disable-combat-timer', function(event) {
-      if (ui.notifications) {
-          if (!game.combats) {
-              ui.notifications.error("Failed to find the combat");
-          } else {
-            const combatId = event.currentTarget.dataset.combatId;
-            const combat = game.combats.get(combatId);
-            
-            if (combat) {
-              updateCombatFlag(combat as Combat, 'timerDisabled', true);
-              ui.notifications.info("Timer Messages Disabled");
-              $(event.currentTarget).prop('disabled', true).text('Timer Messages Disabled');
-            } else {
-              ui.notifications.error("Failed to find the combat");
-            }
-          }
-      }
-  });
-
-  $(document).on('click', '.enable-combat-timer', function(event) {
-    if (ui.notifications) {
-        if (!game.combats) {
-            ui.notifications.error("Failed to find the combat");
-        } else {
-            const combatId = event.currentTarget.dataset.combatId;
-            const combat = game.combats.get(combatId);
-            
-            if (combat) {
-                updateCombatFlag(combat as Combat, 'timerDisabled', false);
-                ui.notifications.info("Timer Messages Enabled");
-                $(event.currentTarget).prop('disabled', true).text('Timer Messages Enabled');
-            } else {
-                ui.notifications.error("Failed to find the combat");
-            }
-        }
-    }
+    event.preventDefault();
+    toggleCombatTimerMessages(
+      button.dataset.combatId,
+      button.classList.contains('disable-combat-timer'),
+      button,
+    );
   });
 });
 
@@ -382,53 +419,13 @@ Hooks.on('renderCombatTracker', (app: Application, html: JQuery | HTMLElement | 
 // Licensed under the MIT License
 // Open source is the best!
 
-// Apply custom CSS to chat messages
-Hooks.on("renderChatMessage", (_app: Application, html: JQuery, _data: any) => {
-  const root = html[0] as HTMLElement | undefined;
+function applyCompactChatMessageStyles(_message: unknown, html: JQuery | HTMLElement, _data: any) {
+  const root = html instanceof HTMLElement ? html : html[0] as HTMLElement | undefined;
   if (!root) return;
 
-  const message = root.querySelector('.turn-time-message-compact') as HTMLElement | null;
-  if (!message) return;
+  styleCompactChatMessage(root);
+}
 
-  root.style.textAlign = 'center';
-  root.style.margin = '2px';
-  root.style.padding = '2px';
-
-  const sender = root.querySelector('.message-sender');
-  if (sender) sender.textContent = '';
-
-  const metadata = root.querySelector('.message-metadata') as HTMLElement | null;
-  if (metadata) metadata.style.display = 'none';
-
-  const whisperTo = root.querySelector('.whisper-to') as HTMLElement | null;
-  if (whisperTo) whisperTo.style.display = 'none';
-
-  if (game.user?.isGM) {
-    message.style.position = 'relative';
-
-    // First wrap the content in a div that keeps centering
-    const content = message.innerHTML;
-    message.innerHTML = `<div class="centered-content">${content}</div>`;
-
-    // Add the trash icon
-    const wrapper = document.createElement('span');
-    wrapper.style.position = 'absolute';
-    wrapper.style.right = '4px';
-    wrapper.style.top = '0px';
-    wrapper.style.fontSize = 'var(--font-size-12)';
-
-    const anchor = document.createElement('a');
-    anchor.className = 'button message-header message-delete';
-    anchor.innerHTML = '<i class="fas fa-trash"></i>';
-
-    wrapper.appendChild(anchor);
-    message.appendChild(wrapper);
-
-    const centered = message.querySelector('.centered-content') as HTMLElement | null;
-    if (centered) {
-      centered.style.display = 'inline-block';
-      centered.style.maxWidth = 'calc(100% - 20px)';
-      centered.style.textAlign = 'center';
-    }
-  }
-});
+// Apply custom CSS to chat messages.
+Hooks.on("renderChatMessage", applyCompactChatMessageStyles);
+Hooks.on("renderChatMessageHTML", applyCompactChatMessageStyles);
