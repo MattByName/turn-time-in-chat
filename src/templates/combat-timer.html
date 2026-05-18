@@ -3,6 +3,9 @@
       .combat-timer-container {
         display: grid;
         gap: 12px;
+        --ttic-text-muted: color-mix(in srgb, currentColor 68%, transparent);
+        --ttic-panel-border: color-mix(in srgb, currentColor 28%, transparent);
+        --ttic-panel-bg: color-mix(in srgb, currentColor 8%, transparent);
       }
 
       .combat-timer-container h2 {
@@ -13,16 +16,16 @@
         display: grid;
         gap: 4px;
         padding: 14px;
-        border: 1px solid var(--color-border-highlight, #9f8475);
+        border: 1px solid var(--ttic-panel-border);
         border-radius: 6px;
-        background: color-mix(in srgb, var(--color-bg-option, #f4efe6) 80%, var(--color-shadow-primary, #000) 20%);
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+        background: var(--ttic-panel-bg);
+        box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 10%, transparent) inset;
         text-align: center;
       }
 
       .turn-focus__label,
       .turn-focus__caption {
-        color: var(--color-text-light-6, #6b625b);
+        color: var(--ttic-text-muted);
         font-size: var(--font-size-12, 12px);
         font-weight: 600;
         text-transform: uppercase;
@@ -35,7 +38,7 @@
       }
 
       .turn-focus__time {
-        color: var(--color-text-dark-primary, #191813);
+        color: inherit;
         font-family: var(--font-primary, serif);
         font-size: 34px;
         font-weight: 800;
@@ -57,7 +60,7 @@
 
       .timer-stat label {
         margin: 0;
-        color: var(--color-text-light-6, #6b625b);
+        color: var(--ttic-text-muted);
         font-weight: 600;
       }
 
