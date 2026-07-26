@@ -1,5 +1,9 @@
 import { getSetting } from "./settings.ts";
 
+let authoritativeTimeOffsetMS = 0;
+let nextTimeSyncRequestId = 0;
+const pendingTimeSyncRequests = new Map<string, number>();
+
 // Helper function to format milliseconds into a readable time string
 export function formatTime(ms: number): string {
   // Time constants in milliseconds
@@ -134,6 +138,29 @@ export function formatTimeCompact(ms: number): string {
   }
   
   return parts.join(', ');
+}
+
+export function getAuthoritativeNow(): number {
+  if (game.user?.isGM) return Date.now();
+  return Date.now() + authoritativeTimeOffsetMS;
+}
+
+export function createTimeSyncRequest() {
+  const requestId = `${game.user?.id ?? 'user'}-${++nextTimeSyncRequestId}`;
+  const clientSentAt = Date.now();
+  pendingTimeSyncRequests.set(requestId, clientSentAt);
+  return { requestId, clientSentAt };
+}
+
+export function applyTimeSyncResponse(requestId: string, authoritativeNow: number) {
+  const clientSentAt = pendingTimeSyncRequests.get(requestId);
+  if (clientSentAt === undefined) return;
+
+  pendingTimeSyncRequests.delete(requestId);
+
+  const clientReceivedAt = Date.now();
+  const estimatedClientNowAtSample = clientSentAt + ((clientReceivedAt - clientSentAt) / 2);
+  authoritativeTimeOffsetMS = authoritativeNow - estimatedClientNowAtSample;
 }
 
 export function updateCombatFlag(combat: Combat, flag: string, update: unknown) {

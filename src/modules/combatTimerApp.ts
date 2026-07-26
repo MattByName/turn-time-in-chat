@@ -1,4 +1,4 @@
-import { formatTime } from "./util.ts";
+import { formatTime, getAuthoritativeNow } from "./util.ts";
 
 const V2Api = (globalThis as any).foundry?.applications?.api;
 const BaseApplication = V2Api?.ApplicationV2 && V2Api?.HandlebarsApplicationMixin
@@ -56,11 +56,12 @@ export class CombatTimerApp extends BaseApplication {
 
     this._combatId = combat.id;
 
-    const lastTurn = Number(combat.getFlag('turn-time-in-chat', 'lastTurnTime') ?? Date.now());
-    const roundStartTime = Number(combat.getFlag('turn-time-in-chat', 'roundStartTime') ?? Date.now());
-    const combatStartTime = Number(combat.getFlag('turn-time-in-chat', 'combatStartTime') ?? Date.now());
+    const fallbackNow = getAuthoritativeNow();
+    const lastTurn = Number(combat.getFlag('turn-time-in-chat', 'lastTurnTime') ?? fallbackNow);
+    const roundStartTime = Number(combat.getFlag('turn-time-in-chat', 'roundStartTime') ?? fallbackNow);
+    const combatStartTime = Number(combat.getFlag('turn-time-in-chat', 'combatStartTime') ?? fallbackNow);
     const chatMessagesDisabled = combat.getFlag('turn-time-in-chat', 'timerDisabled') ?? false;
-    const now = Date.now();
+    const now = getAuthoritativeNow();
 
     return {
       hasActiveCombat: true,
@@ -83,8 +84,9 @@ export class CombatTimerApp extends BaseApplication {
 
   _getTurnData(combat: Combat) {
     const turns = combat.getFlag('turn-time-in-chat', 'turnLengths') || {};
-    const lastTurn = Number(combat.getFlag('turn-time-in-chat', 'lastTurnTime') ?? Date.now());
-    const now = Date.now();
+    const fallbackNow = getAuthoritativeNow();
+    const lastTurn = Number(combat.getFlag('turn-time-in-chat', 'lastTurnTime') ?? fallbackNow);
+    const now = fallbackNow;
     const currentTurnElapsed = now - lastTurn;
 
     const currentCombatant = combat.combatant;

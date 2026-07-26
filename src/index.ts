@@ -2,7 +2,7 @@
 
 import { postTurnMessage, postCombatRoundMessage, postEndCombatMessage } from "./modules/combatMessages.ts";
 import { CombatTimerApp } from "./modules/combatTimerApp.ts";
-import { sendChatMessage, updateCombatFlag } from "./modules/util.ts";
+import { applyTimeSyncResponse, createTimeSyncRequest, getAuthoritativeNow, sendChatMessage, updateCombatFlag } from "./modules/util.ts";
 import { getSetting, MODULE_ID } from "./modules/settings.ts";
 
 
@@ -34,6 +34,7 @@ function registerSetting(key: string, config: SettingConfig) {
 }
 
 let encounterTimerApp: CombatTimerApp | null = null;
+let timeSyncInterval: number | null = null;
 
 function getActiveCombat(combatId?: string | null) {
   return (combatId ? game.combats?.get(combatId) : null) as Combat | null || game.combat;
@@ -56,6 +57,34 @@ function autoShowEncounterTimer(combatId?: string | null) {
   if (getSetting('autoShowEncounterTimer')) {
     openEncounterTimer(combatId);
   }
+}
+
+function requestAuthoritativeTimeSync() {
+  if (game.user?.isGM) return;
+
+  const activeGM = game.users?.activeGM;
+  if (!activeGM) return;
+
+  const { requestId, clientSentAt } = createTimeSyncRequest();
+  game.socket?.emit(`module.${MODULE_ID}`, {
+    action: 'requestTimeSync',
+    requestId,
+    clientSentAt,
+    requesterUserId: game.user?.id,
+  });
+}
+
+function startAuthoritativeTimeSync() {
+  if (game.user?.isGM) return;
+
+  if (timeSyncInterval) {
+    window.clearInterval(timeSyncInterval);
+  }
+
+  requestAuthoritativeTimeSync();
+  timeSyncInterval = window.setInterval(() => {
+    requestAuthoritativeTimeSync();
+  }, 30000);
 }
 
 function getRenderRoot(html: JQuery | HTMLElement | HTMLElement[] | undefined, app?: Application) {
@@ -271,32 +300,51 @@ Hooks.once('init', () => {
 
 // When Foundry is ready, check for existing combats and initialize them
 Hooks.once('ready', () => {
-  // Get all active combats and initialize their timers
-  game.combats?.forEach((combat: Combat | any) => {
-    const now = Date.now();
-    
-    // Check and set roundStartTime if needed
-    if (combat.started && !combat.getFlag(MODULE_ID, 'roundStartTime')) {
-      updateCombatFlag(combat as Combat, 'roundStartTime', now);
-    }
-    
-    // Check and set lastTurnTime if needed
-    if (combat.started && !combat.getFlag(MODULE_ID, 'lastTurnTime')) {
-      updateCombatFlag(combat as Combat, 'lastTurnTime', now);
-    }
-    
-    // Check and set combatStartTime if needed
-    if (combat.started && !combat.getFlag(MODULE_ID, 'combatStartTime')) {
-      updateCombatFlag(combat as Combat, 'combatStartTime', now);
+  if (game.users?.activeGM?.isSelf) {
+    // Get all active combats and initialize their timers
+    const now = getAuthoritativeNow();
+    game.combats?.forEach((combat: Combat | any) => {
+      // Check and set roundStartTime if needed
+      if (combat.started && !combat.getFlag(MODULE_ID, 'roundStartTime')) {
+        updateCombatFlag(combat as Combat, 'roundStartTime', now);
+      }
+      
+      // Check and set lastTurnTime if needed
+      if (combat.started && !combat.getFlag(MODULE_ID, 'lastTurnTime')) {
+        updateCombatFlag(combat as Combat, 'lastTurnTime', now);
+      }
+      
+      // Check and set combatStartTime if needed
+      if (combat.started && !combat.getFlag(MODULE_ID, 'combatStartTime')) {
+        updateCombatFlag(combat as Combat, 'combatStartTime', now);
+      }
+
+      // Check and set turnLengths if needed
+      if (combat.started && !combat.getFlag(MODULE_ID, 'turnLengths')) {
+        updateCombatFlag(combat as Combat, 'turnLengths', {});
+      }
+      
+    });
+  }
+  game.socket?.on(`module.${MODULE_ID}`, async (data) => {
+    if (data.action === 'requestTimeSync') {
+      if (!game.users?.activeGM?.isSelf) return;
+
+      game.socket?.emit(`module.${MODULE_ID}`, {
+        action: 'timeSyncResponse',
+        requestId: data.requestId,
+        authoritativeNow: Date.now(),
+        requesterUserId: data.requesterUserId,
+      });
+      return;
     }
 
-    // Check and set turnLengths if needed
-    if (combat.started && !combat.getFlag(MODULE_ID, 'turnLengths')) {
-      updateCombatFlag(combat as Combat, 'turnLengths', {});
+    if (data.action === 'timeSyncResponse') {
+      if (game.user?.id !== data.requesterUserId) return;
+      applyTimeSyncResponse(data.requestId, Number(data.authoritativeNow));
+      return;
     }
-    
-  });
-  game.socket?.on(`module.${MODULE_ID}`, async (data) => {
+
     if (!game.users?.activeGM?.isSelf) return;
 
     if (data.action === 'updateCombatFlag') {
@@ -315,12 +363,15 @@ Hooks.once('ready', () => {
     }
   })
 
+  startAuthoritativeTimeSync();
   autoShowEncounterTimer();
 });
 
 // When combat starts, begin tracking
 Hooks.on('combatStart', (combat: Combat) => {
-  const now = Date.now();
+  if (!game.users?.activeGM?.isSelf) return;
+
+  const now = getAuthoritativeNow();
   
   const chatEnabled = getSetting('postInChat');
   updateCombatFlag(combat as Combat, 'roundStartTime', now);
@@ -355,11 +406,13 @@ Hooks.on('combatStart', (combat: Combat) => {
 
 // When a combat turn changes, post time elapsed
 Hooks.on('combatTurn', (combat: Combat, _updateData: CombatTurnUpdateData, _updateOptions: CombatUpdateOptions) => {
+  if (!game.users?.activeGM?.isSelf) return;
   postTurnMessage(combat)
 });
 
 // When a combat round changes, post round time
 Hooks.on('combatRound', (combat: Combat, _updateData: CombatRoundUpdateData, _updateOptions: CombatUpdateOptions) => {
+  if (!game.users?.activeGM?.isSelf) return;
   postTurnMessage(combat)
   postCombatRoundMessage(combat)
 });

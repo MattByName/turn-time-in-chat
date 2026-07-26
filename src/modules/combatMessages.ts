@@ -1,4 +1,4 @@
-import { formatTime, formatTimeCompact, sendChatMessage, updateCombatFlag } from "./util.ts";
+import { formatTime, formatTimeCompact, getAuthoritativeNow, sendChatMessage, updateCombatFlag } from "./util.ts";
 import { getSetting } from "./settings.ts";
 
 export function postTurnMessage(combat: Combat) {
@@ -12,7 +12,7 @@ export function postTurnMessage(combat: Combat) {
   const lastTurn = combat.getFlag("turn-time-in-chat", 'lastTurnTime');
   if (!lastTurn) return;
   
-  const now = Date.now();
+  const now = getAuthoritativeNow();
   const turnDuration = now - lastTurn;
 
   // Get minimum turn length setting in seconds
@@ -107,7 +107,7 @@ export function postCombatRoundMessage(combat: Combat) {
   const roundStart = combat.getFlag("turn-time-in-chat", 'roundStartTime');
   if (!roundStart) return;
   
-  const now = Date.now();
+  const now = getAuthoritativeNow();
   const roundDuration = now - roundStart;
   // Get minimum turn length setting in seconds
   const minimumTurnLength = getSetting('minimumTurnLength');
@@ -148,7 +148,7 @@ export function postEndCombatMessage(combat: Combat) {
   const combatStart = combat.getFlag("turn-time-in-chat", 'combatStartTime');
   if (!combatStart) return;
   
-  const totalTime = Date.now() - combatStart;
+  const totalTime = getAuthoritativeNow() - combatStart;
   // Get minimum turn length setting in seconds
   const minimumTurnLength = getSetting('minimumTurnLength');
   // Convert totalTime from ms to seconds for comparison
